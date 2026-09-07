@@ -61,7 +61,8 @@ $jsPath = dirname(__DIR__, 2) . '/assets/js/app.js';
             <a class="<?= e(nav_active('/categorias')) ?>" href="<?= e(url('/categorias')) ?>"><?= icon('tag') ?> Categorías</a>
             <a class="<?= e(nav_active('/sincronizar')) ?>" href="<?= e(url('/sincronizar')) ?>"><?= icon('sync') ?> Sincronizar</a>
             <a class="<?= e(nav_active('/configuracion')) ?>" href="<?= e(url('/configuracion')) ?>"><?= icon('settings') ?> Configuración</a>
-            <a class="<?= e(nav_active('/perfil')) ?>" href="<?= e(url('/perfil')) ?>"><?= icon('user') ?> Perfil</a>
+            <hr class="nav-divider">
+            <a class="nav-profile <?= e(nav_active('/perfil')) ?>" href="<?= e(url('/perfil')) ?>"><?= icon('user') ?> Perfil</a>
         </nav>
         <div class="sidebar-footer">
             <form method="post" action="<?= e(url('/tema')) ?>" class="theme-form">
@@ -73,9 +74,7 @@ $jsPath = dirname(__DIR__, 2) . '/assets/js/app.js';
                     <?= $theme === 'dark' ? 'Modo claro' : 'Modo oscuro' ?>
                 </button>
             </form>
-            <?php $navUser = Auth::user(); ?>
-            <?php if ($navUser): ?>
-                <p class="sidebar-meta"><?= e((string) $navUser['email']) ?></p>
+            <?php if (Auth::check()): ?>
                 <form method="post" action="<?= e(url('/logout')) ?>">
                     <?= csrf_field() ?>
                     <button type="submit" class="theme-btn"><?= icon('logout', 16) ?> Salir</button>

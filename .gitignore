@@ -1,1 +1,19 @@
 .env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# Logs / temp
+*.log
+tmp/
+temp/
+cache/

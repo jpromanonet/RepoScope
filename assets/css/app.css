@@ -104,6 +104,24 @@ code {
   text-decoration: none;
 }
 .sidebar-nav a:hover, .sidebar-nav a.is-active { background: var(--cyan-dim); color: var(--cyan); text-decoration: none; }
+.nav-divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: .65rem .35rem .55rem;
+}
+.sidebar-nav a.nav-profile {
+  margin-top: .1rem;
+  background: color-mix(in srgb, var(--amber) 16%, transparent);
+  color: var(--amber);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+  font-weight: 600;
+}
+.sidebar-nav a.nav-profile:hover,
+.sidebar-nav a.nav-profile.is-active {
+  background: color-mix(in srgb, var(--amber) 28%, transparent);
+  color: var(--amber);
+  text-decoration: none;
+}
 .nav-count {
   margin-left: auto;
   background: var(--rose);
