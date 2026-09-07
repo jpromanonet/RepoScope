@@ -6,6 +6,10 @@ require __DIR__ . '/app/bootstrap.php';
 
 $router = new Router();
 
+$router->get('/login', [AuthController::class, 'showLogin']);
+$router->post('/login', [AuthController::class, 'login']);
+$router->post('/logout', [AuthController::class, 'logout']);
+
 $router->get('/', [DashboardController::class, 'index']);
 
 $router->get('/repositorios', [RepoController::class, 'index']);
@@ -30,5 +34,8 @@ $router->post('/sincronizar/reanalizar', [SyncController::class, 'rescan']);
 $router->get('/configuracion', [SettingsController::class, 'index']);
 $router->post('/configuracion', [SettingsController::class, 'save']);
 $router->post('/tema', [SettingsController::class, 'theme']);
+
+$router->get('/perfil', [ProfileController::class, 'index']);
+$router->post('/perfil', [ProfileController::class, 'save']);
 
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

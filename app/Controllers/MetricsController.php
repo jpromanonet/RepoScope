@@ -9,6 +9,7 @@ final class MetricsController
         view('metrics/index', [
             'title' => 'Métricas',
             'metrics' => StatsService::metrics(),
+            'charts' => true,
         ]);
     }
 }

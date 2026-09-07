@@ -101,16 +101,18 @@ try {
 <body>
 <div class="card">
     <h1>RepoScope</h1>
-    <p class="muted">Instalación de la base MySQL para escanear repositorios.</p>
+    <p class="muted">Crea la base y aplica <code>sql/schema.sql</code> (único archivo SQL).</p>
     <?php if ($ok): ?>
         <p class="ok">Listo.</p>
         <ul><?php foreach ($messages as $m): ?><li><?= htmlspecialchars($m, ENT_QUOTES, 'UTF-8') ?></li><?php endforeach; ?></ul>
+        <p>Login inicial: <code>admin@local</code> / <code>reposcope</code>. Cambialo en Perfil.</p>
         <p><a class="btn" href="index.php">Entrar a RepoScope</a></p>
     <?php elseif ($error): ?>
         <p class="err"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
         <p>Revisá <code>.env</code> (host, usuario y clave de MySQL).</p>
     <?php elseif ($already): ?>
         <p class="ok">La base ya está instalada.</p>
+        <p>Si no cambiaste la cuenta: <code>admin@local</code> / <code>reposcope</code>.</p>
         <p><a class="btn" href="index.php">Entrar a RepoScope</a></p>
     <?php else: ?>
         <p>Se va a crear la base <code><?= htmlspecialchars((string) $dbConfig['name'], ENT_QUOTES, 'UTF-8') ?></code> y las tablas.</p>

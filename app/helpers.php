@@ -86,7 +86,7 @@ function redirect(string $path): never
     exit;
 }
 
-function view(string $template, array $vars = []): void
+function view(string $template, array $vars = [], string $layout = 'layouts/main'): void
 {
     extract($vars, EXTR_SKIP);
     $appName = (string) app_config('name', 'RepoScope');
@@ -95,7 +95,11 @@ function view(string $template, array $vars = []): void
     if (!is_file($templateFile)) {
         throw new RuntimeException('View not found: ' . $template);
     }
-    require dirname(__DIR__) . '/app/Views/layouts/main.php';
+    $layoutFile = dirname(__DIR__) . '/app/Views/' . $layout . '.php';
+    if (!is_file($layoutFile)) {
+        throw new RuntimeException('Layout not found: ' . $layout);
+    }
+    require $layoutFile;
 }
 
 function csrf_token(): string
@@ -345,6 +349,8 @@ function icon(string $name, int $size = 18): string
         'moon' => '<path d="M18 13a7 7 0 1 1-7-9 7 7 0 0 0 7 9z"/>',
         'check' => '<path d="m5 12 5 5 9-9"/>',
         'chart' => '<path d="M4 19h16M7 16v-5M12 16V8M17 16v-8"/>',
+        'user' => '<circle cx="12" cy="8" r="3.5"/><path d="M5 19c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/>',
+        'logout' => '<path d="M10 7V5H5v14h5v-2M10 12h10M16 8l4 4-4 4"/>',
     ];
     $path = $icons[$name] ?? $icons['radar'];
     return '<svg class="icon" width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $path . '</svg>';

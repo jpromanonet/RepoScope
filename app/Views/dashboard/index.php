@@ -58,59 +58,59 @@
         </article>
     </section>
 
-    <div class="split">
-        <section class="panel">
-            <h2>Hallazgos abiertos</h2>
-            <ul class="finding-bars">
-                <?php foreach (finding_types() as $type => $label):
-                    $n = (int) ($stats['findings'][$type] ?? 0);
-                    $max = max(1, (int) max($stats['findings']));
-                    $pct = (int) round($n / $max * 100);
-                    ?>
+    <section class="panel">
+        <h2>Hallazgos abiertos</h2>
+        <ul class="finding-bars">
+            <?php foreach (finding_types() as $type => $label):
+                $n = (int) ($stats['findings'][$type] ?? 0);
+                $max = max(1, (int) max($stats['findings']));
+                $pct = (int) round($n / $max * 100);
+                ?>
+                <li>
+                    <a href="<?= e(url('/atencion?type=' . $type)) ?>">
+                        <span><?= e($label) ?></span>
+                        <span class="bar"><i style="width:<?= $pct ?>%"></i></span>
+                        <strong><?= format_number($n) ?></strong>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+    <section class="panel mt">
+        <h2>Por categoría</h2>
+        <?php if (!$stats['by_category']): ?>
+            <p class="muted">Sin categorías todavía.</p>
+        <?php else: ?>
+            <ul class="chip-list">
+                <?php foreach ($stats['by_category'] as $cat): ?>
                     <li>
-                        <a href="<?= e(url('/atencion?type=' . $type)) ?>">
-                            <span><?= e($label) ?></span>
-                            <span class="bar"><i style="width:<?= $pct ?>%"></i></span>
-                            <strong><?= format_number($n) ?></strong>
+                        <a class="chip" href="<?= e(url('/repositorios?category_id=' . (int) $cat['id'])) ?>">
+                            <i class="dot" style="background:<?= e((string) $cat['color']) ?>"></i>
+                            <?= e((string) $cat['name']) ?>
+                            <span><?= format_number((int) $cat['total']) ?></span>
                         </a>
                     </li>
                 <?php endforeach; ?>
             </ul>
-        </section>
-        <section class="panel">
-            <h2>Por categoría</h2>
-            <?php if (!$stats['by_category']): ?>
-                <p class="muted">Sin categorías todavía.</p>
-            <?php else: ?>
-                <ul class="chip-list">
-                    <?php foreach ($stats['by_category'] as $cat): ?>
-                        <li>
-                            <a class="chip" href="<?= e(url('/repositorios?category_id=' . (int) $cat['id'])) ?>">
-                                <i class="dot" style="background:<?= e((string) $cat['color']) ?>"></i>
-                                <?= e((string) $cat['name']) ?>
-                                <span><?= format_number((int) $cat['total']) ?></span>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-            <h2 class="mt">Lenguajes</h2>
-            <?php if (!$stats['by_language']): ?>
-                <p class="muted">Sin datos de lenguaje.</p>
-            <?php else: ?>
-                <ul class="plain-list">
-                    <?php foreach ($stats['by_language'] as $lang): ?>
-                        <li>
-                            <a href="<?= e(url('/repositorios?language=' . rawurlencode((string) $lang['name']))) ?>">
-                                <?= e((string) $lang['name']) ?>
-                                <span><?= format_number((int) $lang['total']) ?></span>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </section>
-    </div>
+        <?php endif; ?>
+    </section>
+    <section class="panel mt">
+        <h2>Lenguajes</h2>
+        <?php if (!$stats['by_language']): ?>
+            <p class="muted">Sin datos de lenguaje.</p>
+        <?php else: ?>
+            <ul class="plain-list">
+                <?php foreach ($stats['by_language'] as $lang): ?>
+                    <li>
+                        <a href="<?= e(url('/repositorios?language=' . rawurlencode((string) $lang['name']))) ?>">
+                            <?= e((string) $lang['name']) ?>
+                            <span><?= format_number((int) $lang['total']) ?></span>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
 
     <?php if (!empty($stats['last_sync'])): ?>
         <p class="muted footer-note">

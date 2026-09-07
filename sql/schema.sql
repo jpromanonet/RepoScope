@@ -1,12 +1,25 @@
 -- =============================================================================
--- RepoScope — esquema único
+-- RepoScope — único archivo SQL
 -- =============================================================================
 -- install.php aplica este archivo. Schema::ensure lo usa si la base está vacía.
 -- MySQL 8+ / MariaDB · utf8mb4
+-- Usuario inicial: admin@local / reposcope  (cambiarlo en Perfil)
 -- =============================================================================
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  last_login_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS settings (
   setting_key VARCHAR(64) NOT NULL,
@@ -101,3 +114,27 @@ CREATE TABLE IF NOT EXISTS sync_runs (
   findings_open INT UNSIGNED NOT NULL DEFAULT 0,
   error_message TEXT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO users (id, name, email, password_hash, is_active) VALUES
+(1, 'Admin', 'admin@local', '$2y$10$FKwEJl3C18ID9SW2wdx2y.p4Pntu8pwhCA/vvS5y7XzkL3LsZTmB2', 1);
+
+INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
+('github_token', ''),
+('github_owner', ''),
+('github_orgs', ''),
+('include_forks', '1'),
+('include_archived', '1'),
+('findings_skip_forks', '1'),
+('findings_skip_archived', '1'),
+('stale_days', '180'),
+('required_files', '.gitignore'),
+('theme', 'dark');
+
+INSERT IGNORE INTO categories (id, slug, name, color, sort_order, is_system) VALUES
+(1, 'personal', 'Personal', '#3DDCFF', 1, 1),
+(2, 'trabajo', 'Trabajo', '#7C9CFF', 2, 1),
+(3, 'cliente', 'Cliente', '#F0B429', 3, 1),
+(4, 'experimento', 'Experimento', '#C084FC', 4, 1),
+(5, 'aprendizaje', 'Aprendizaje', '#3DDC97', 5, 1),
+(6, 'fork', 'Fork', '#8B9BB4', 6, 1),
+(7, 'archivo', 'Archivo', '#64748B', 7, 1);

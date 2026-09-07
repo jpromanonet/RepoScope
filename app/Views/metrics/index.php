@@ -2,19 +2,60 @@
 /** @var array $metrics */
 $m = $metrics;
 $total = (int) $m['total'];
-$safe = max(1, $total);
-$bar = static function (int $n, int $max): int {
-    if ($max <= 0) {
-        return 0;
-    }
-    return (int) round($n / $max * 100);
+$j = static function (array $payload): string {
+    return e(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 };
+$findingLabels = [];
+$findingValues = [];
+foreach (finding_types() as $type => $label) {
+    $findingLabels[] = $label;
+    $findingValues[] = (int) ($m['finding_repos'][$type] ?? 0);
+}
+$langLabels = [];
+$langValues = [];
+foreach (array_slice($m['by_language'] ?? [], 0, 12) as $lang) {
+    $langLabels[] = (string) $lang['name'];
+    $langValues[] = (int) $lang['total'];
+}
+$catLabels = [];
+$catValues = [];
+$catColors = [];
+foreach ($m['by_category'] ?? [] as $cat) {
+    if ((int) $cat['total'] < 1) {
+        continue;
+    }
+    $catLabels[] = (string) $cat['name'];
+    $catValues[] = (int) $cat['total'];
+    $catColors[] = (string) $cat['color'];
+}
+if ((int) $m['uncategorized'] > 0) {
+    $catLabels[] = 'Sin categoría';
+    $catValues[] = (int) $m['uncategorized'];
+    $catColors[] = '#8B9BB4';
+}
+$ownerLabels = [];
+$ownerValues = [];
+$ownerHealth = [];
+foreach (array_slice($m['by_owner'] ?? [], 0, 10) as $owner) {
+    $ownerLabels[] = (string) $owner['owner'];
+    $ownerValues[] = (int) $owner['total'];
+    $ownerHealth[] = (int) $owner['avg_health'];
+}
+$actLabels = ['30 d', '31–90', '91–180', '181–365', '> 1 año', 'Sin push'];
+$actValues = [
+    (int) $m['activity']['d30'],
+    (int) $m['activity']['d90'],
+    (int) $m['activity']['d180'],
+    (int) $m['activity']['d365'],
+    (int) $m['activity']['older'],
+    (int) $m['activity']['never'],
+];
 ?>
 <div class="page-head">
     <div>
         <p class="eyebrow">Análisis</p>
         <h1>Métricas</h1>
-        <p class="muted">Distribución de salud, hallazgos, actividad y dónde está el inventario.</p>
+        <p class="muted">Composición del inventario, actividad en el tiempo y salud por recorte.</p>
     </div>
     <?php if ($total > 0): ?>
         <a class="btn btn-ghost" href="<?= e(url('/atencion')) ?>">Ver atención</a>
@@ -25,7 +66,7 @@ $bar = static function (int $n, int $max): int {
     <section class="empty-hero">
         <div class="radar-ring" aria-hidden="true"></div>
         <h2>Todavía no hay números</h2>
-        <p class="muted">Cuando sincronices, acá vas a ver salud, lenguajes, actividad y los repos que más atención piden.</p>
+        <p class="muted">Cuando sincronices, acá van barras, líneas y tortas del inventario.</p>
         <a class="btn btn-primary" href="<?= e(url('/sincronizar')) ?>">Sincronizar</a>
     </section>
 <?php else: ?>
@@ -60,179 +101,168 @@ $bar = static function (int $n, int $max): int {
         </article>
     </section>
 
-    <div class="split">
+    <h2 class="section-title">Composición</h2>
+    <div class="chart-grid">
         <section class="panel">
             <h2>Salud</h2>
-            <?php
-            $bandMeta = [
-                'ok' => ['100', 'En regla', 'var(--green)'],
-                'high' => ['80–99', 'Casi', 'var(--cyan)'],
-                'warn' => ['50–79', 'Regular', 'var(--amber)'],
-                'bad' => ['0–49', 'Crítico', 'var(--rose)'],
-            ];
-            $bandMax = max(1, (int) max($m['bands']));
-            ?>
-            <ul class="metric-bars">
-                <?php foreach ($bandMeta as $key => [$range, $label, $color]):
-                    $n = (int) ($m['bands'][$key] ?? 0);
-                    ?>
-                    <li>
-                        <span class="metric-k"><?= e($label) ?> <small><?= e($range) ?></small></span>
-                        <span class="bar"><i style="width:<?= $bar($n, $bandMax) ?>%;background:<?= $color ?>"></i></span>
-                        <strong><?= format_number($n) ?></strong>
-                        <span class="muted"><?= (int) round($n / $safe * 100) ?>%</span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-            <div class="mix-pills">
-                <span class="pill"><?= format_number((int) $m['public']) ?> públicos</span>
-                <span class="pill"><?= format_number((int) $m['private']) ?> privados</span>
-                <span class="pill"><?= format_number((int) $m['forks']) ?> forks</span>
-                <span class="pill"><?= format_number((int) $m['archived']) ?> archivados</span>
-                <?php if ((int) $m['templates'] > 0): ?>
-                    <span class="pill"><?= format_number((int) $m['templates']) ?> templates</span>
-                <?php endif; ?>
+            <div class="chart-box">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'doughnut',
+                    'labels' => ['En regla (100)', 'Casi (80–99)', 'Regular (50–79)', 'Crítico (0–49)'],
+                    'values' => [
+                        (int) $m['bands']['ok'],
+                        (int) $m['bands']['high'],
+                        (int) $m['bands']['warn'],
+                        (int) $m['bands']['bad'],
+                    ],
+                    'colors' => ['green', 'cyan', 'amber', 'rose'],
+                ]) ?>"></canvas>
             </div>
         </section>
-
         <section class="panel">
-            <h2>Actividad (último push)</h2>
-            <?php
-            $actMeta = [
-                'd30' => 'Últimos 30 días',
-                'd90' => '31–90 días',
-                'd180' => '91–180 días',
-                'd365' => '181–365 días',
-                'older' => 'Más de un año',
-                'never' => 'Sin push',
-            ];
-            $actMax = max(1, (int) max($m['activity']));
-            ?>
-            <ul class="metric-bars">
-                <?php foreach ($actMeta as $key => $label):
-                    $n = (int) ($m['activity'][$key] ?? 0);
-                    ?>
-                    <li>
-                        <span class="metric-k"><?= e($label) ?></span>
-                        <span class="bar"><i style="width:<?= $bar($n, $actMax) ?>%"></i></span>
-                        <strong><?= format_number($n) ?></strong>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-            <p class="muted">Mantenimiento se marca a los <?= (int) $m['stale_days'] ?> días sin push.</p>
+            <h2>Visibilidad</h2>
+            <div class="chart-box">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'doughnut',
+                    'labels' => ['Públicos', 'Privados'],
+                    'values' => [(int) $m['public'], (int) $m['private']],
+                    'colors' => ['cyan', 'violet'],
+                ]) ?>"></canvas>
+            </div>
         </section>
-    </div>
-
-    <section class="panel mt">
-        <h2>Hallazgos: repos afectados</h2>
-        <p class="muted">Cuántos repositorios tienen cada tipo abierto (un repo puede contar en varios).</p>
-        <ul class="metric-bars">
-            <?php
-            $findMax = max(1, (int) max($m['finding_repos'] ?: [0]));
-            foreach (finding_types() as $type => $label):
-                $n = (int) ($m['finding_repos'][$type] ?? 0);
-                $open = (int) ($m['findings'][$type] ?? 0);
-                ?>
-                <li>
-                    <span class="metric-k">
-                        <a href="<?= e(url('/atencion?type=' . $type)) ?>"><?= e($label) ?></a>
-                    </span>
-                    <span class="bar"><i style="width:<?= $bar($n, $findMax) ?>%"></i></span>
-                    <strong><?= format_number($n) ?></strong>
-                    <span class="muted"><?= (int) round($n / $safe * 100) ?>% · <?= format_number($open) ?> hallazgos</span>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-    </section>
-
-    <div class="split mt">
+        <section class="panel">
+            <h2>Tipo de repo</h2>
+            <div class="chart-box">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'doughnut',
+                    'labels' => ['Originales', 'Forks', 'Archivados'],
+                    'values' => [
+                        (int) ($m['mix']['originals'] ?? $m['originals']),
+                        (int) ($m['mix']['forks'] ?? $m['forks']),
+                        (int) ($m['mix']['archived'] ?? $m['archived']),
+                    ],
+                    'colors' => ['green', 'blue', 'muted'],
+                ]) ?>"></canvas>
+            </div>
+        </section>
+        <section class="panel">
+            <h2>Hallazgos (repos afectados)</h2>
+            <div class="chart-box">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'doughnut',
+                    'labels' => $findingLabels,
+                    'values' => $findingValues,
+                    'colors' => ['cyan', 'violet', 'blue', 'amber', 'rose'],
+                ]) ?>"></canvas>
+            </div>
+        </section>
         <section class="panel">
             <h2>Categorías</h2>
-            <?php if (!$m['by_category']): ?>
-                <p class="muted">Sin categorías.</p>
-            <?php else: ?>
-                <ul class="plain-list metric-rows">
-                    <?php foreach ($m['by_category'] as $cat): ?>
-                        <li>
-                            <a href="<?= e(url('/repositorios?category_id=' . (int) $cat['id'])) ?>">
-                                <span>
-                                    <i class="dot" style="background:<?= e((string) $cat['color']) ?>"></i>
-                                    <?= e((string) $cat['name']) ?>
-                                </span>
-                                <span>
-                                    <?= format_number((int) $cat['total']) ?>
-                                    <?php if ((int) $cat['total'] > 0): ?>
-                                        <small class="<?= e(health_class((int) $cat['avg_health'])) ?>"> · <?= (int) $cat['avg_health'] ?></small>
-                                    <?php endif; ?>
-                                </span>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                    <?php if ((int) $m['uncategorized'] > 0): ?>
-                        <li>
-                            <a href="<?= e(url('/repositorios?category_id=none')) ?>">
-                                <span>Sin categoría</span>
-                                <span><?= format_number((int) $m['uncategorized']) ?></span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            <?php endif; ?>
-        </section>
-
-        <section class="panel">
-            <h2>Lenguajes</h2>
-            <?php if (!$m['by_language']): ?>
-                <p class="muted">Sin lenguaje declarado.</p>
-            <?php else:
-                $langMax = max(1, (int) ($m['by_language'][0]['total'] ?? 1));
-                ?>
-                <ul class="metric-bars compact">
-                    <?php foreach ($m['by_language'] as $lang):
-                        $n = (int) $lang['total'];
-                        ?>
-                        <li>
-                            <span class="metric-k">
-                                <a href="<?= e(url('/repositorios?language=' . rawurlencode((string) $lang['name']))) ?>"><?= e((string) $lang['name']) ?></a>
-                            </span>
-                            <span class="bar"><i style="width:<?= $bar($n, $langMax) ?>%"></i></span>
-                            <strong><?= format_number($n) ?></strong>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
+            <div class="chart-box">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'pie',
+                    'labels' => $catLabels ?: ['—'],
+                    'values' => $catValues ?: [1],
+                    'hex' => $catColors ?: ['#8B9BB4'],
+                ]) ?>"></canvas>
+            </div>
         </section>
     </div>
 
-    <?php if (count($m['by_owner']) > 1): ?>
-        <section class="panel mt">
-            <h2>Por dueño / org</h2>
-            <div class="table-wrap">
-                <table class="data">
-                    <thead>
-                        <tr>
-                            <th>Owner</th>
-                            <th>Repos</th>
-                            <th>Salud</th>
-                            <th>Privados</th>
-                            <th>Forks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($m['by_owner'] as $owner): ?>
-                        <tr>
-                            <td><?= e((string) $owner['owner']) ?></td>
-                            <td><?= format_number((int) $owner['total']) ?></td>
-                            <td><span class="health <?= e(health_class((int) $owner['avg_health'])) ?>"><?= (int) $owner['avg_health'] ?></span></td>
-                            <td><?= format_number((int) $owner['private_n']) ?></td>
-                            <td><?= format_number((int) $owner['fork_n']) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <h2 class="section-title">Barras</h2>
+    <div class="chart-grid chart-grid-wide">
+        <section class="panel">
+            <h2>Lenguajes</h2>
+            <div class="chart-box chart-box-bar">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'bar',
+                    'labels' => $langLabels ?: ['—'],
+                    'values' => $langValues ?: [0],
+                    'color' => 'cyan',
+                ]) ?>"></canvas>
             </div>
         </section>
-    <?php endif; ?>
+        <section class="panel">
+            <h2>Último push</h2>
+            <div class="chart-box chart-box-bar">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'bar',
+                    'labels' => $actLabels,
+                    'values' => $actValues,
+                    'color' => 'amber',
+                ]) ?>"></canvas>
+            </div>
+            <p class="muted">Mantenimiento se marca a los <?= (int) $m['stale_days'] ?> días.</p>
+        </section>
+        <?php if ($ownerLabels): ?>
+        <section class="panel">
+            <h2>Repos por owner</h2>
+            <div class="chart-box chart-box-bar">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'bar',
+                    'labels' => $ownerLabels,
+                    'values' => $ownerValues,
+                    'color' => 'blue',
+                ]) ?>"></canvas>
+            </div>
+        </section>
+        <section class="panel">
+            <h2>Salud promedio por owner</h2>
+            <div class="chart-box chart-box-bar">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'bar',
+                    'labels' => $ownerLabels,
+                    'values' => $ownerHealth,
+                    'color' => 'green',
+                    'max' => 100,
+                ]) ?>"></canvas>
+            </div>
+        </section>
+        <?php endif; ?>
+    </div>
+
+    <h2 class="section-title">Líneas de tiempo</h2>
+    <div class="chart-grid chart-grid-wide">
+        <section class="panel">
+            <h2>Repos creados (18 meses)</h2>
+            <div class="chart-box chart-box-line">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'line',
+                    'labels' => $m['created_months']['labels'] ?? [],
+                    'values' => $m['created_months']['values'] ?? [],
+                    'color' => 'cyan',
+                    'label' => 'Creados',
+                ]) ?>"></canvas>
+            </div>
+        </section>
+        <section class="panel">
+            <h2>Pushes (12 meses)</h2>
+            <div class="chart-box chart-box-line">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'line',
+                    'labels' => $m['pushed_months']['labels'] ?? [],
+                    'values' => $m['pushed_months']['values'] ?? [],
+                    'color' => 'green',
+                    'label' => 'Con push en el mes',
+                ]) ?>"></canvas>
+            </div>
+        </section>
+        <?php if (!empty($m['sync_series']['labels'])): ?>
+        <section class="panel chart-span">
+            <h2>Historial de sync</h2>
+            <div class="chart-box chart-box-line">
+                <canvas data-rs-chart="<?= $j([
+                    'type' => 'line',
+                    'labels' => $m['sync_series']['labels'],
+                    'datasets' => [
+                        ['label' => 'Repos', 'data' => $m['sync_series']['upserted'], 'color' => 'cyan'],
+                        ['label' => 'Hallazgos abiertos', 'data' => $m['sync_series']['findings'], 'color' => 'rose'],
+                    ],
+                ]) ?>"></canvas>
+            </div>
+        </section>
+        <?php endif; ?>
+    </div>
 
     <section class="panel mt">
         <h2>Los que más atención piden</h2>
@@ -254,11 +284,6 @@ $bar = static function (int $n, int $max): int {
                         <tr>
                             <td>
                                 <a class="repo-name" href="<?= e(url('/repositorios/' . (int) $repo['id'])) ?>"><?= e((string) $repo['full_name']) ?></a>
-                                <div class="repo-meta">
-                                    <?php if (!empty($repo['is_fork'])): ?><span class="pill">fork</span><?php endif; ?>
-                                    <?php if (!empty($repo['is_archived'])): ?><span class="pill">archivado</span><?php endif; ?>
-                                    <?= e((string) $repo['visibility']) ?>
-                                </div>
                             </td>
                             <td><span class="health <?= e(health_class((int) $repo['health_score'])) ?>"><?= (int) $repo['health_score'] ?></span></td>
                             <td><?= e((string) ($repo['language'] ?: '—')) ?></td>
@@ -270,21 +295,4 @@ $bar = static function (int $n, int $max): int {
             </div>
         <?php endif; ?>
     </section>
-
-    <?php if ($m['syncs']): ?>
-        <section class="panel mt">
-            <h2>Historial de sync</h2>
-            <ul class="plain-list">
-                <?php foreach ($m['syncs'] as $run): ?>
-                    <li>
-                        <span>
-                            <?= e(format_datetime($run['started_at'])) ?>
-                            <span class="pill pill-<?= e((string) $run['status']) ?>"><?= e((string) $run['status']) ?></span>
-                        </span>
-                        <span><?= format_number((int) $run['repos_upserted']) ?> repos</span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-        </section>
-    <?php endif; ?>
 <?php endif; ?>

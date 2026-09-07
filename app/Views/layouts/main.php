@@ -61,6 +61,7 @@ $jsPath = dirname(__DIR__, 2) . '/assets/js/app.js';
             <a class="<?= e(nav_active('/categorias')) ?>" href="<?= e(url('/categorias')) ?>"><?= icon('tag') ?> Categorías</a>
             <a class="<?= e(nav_active('/sincronizar')) ?>" href="<?= e(url('/sincronizar')) ?>"><?= icon('sync') ?> Sincronizar</a>
             <a class="<?= e(nav_active('/configuracion')) ?>" href="<?= e(url('/configuracion')) ?>"><?= icon('settings') ?> Configuración</a>
+            <a class="<?= e(nav_active('/perfil')) ?>" href="<?= e(url('/perfil')) ?>"><?= icon('user') ?> Perfil</a>
         </nav>
         <div class="sidebar-footer">
             <form method="post" action="<?= e(url('/tema')) ?>" class="theme-form">
@@ -72,6 +73,14 @@ $jsPath = dirname(__DIR__, 2) . '/assets/js/app.js';
                     <?= $theme === 'dark' ? 'Modo claro' : 'Modo oscuro' ?>
                 </button>
             </form>
+            <?php $navUser = Auth::user(); ?>
+            <?php if ($navUser): ?>
+                <p class="sidebar-meta"><?= e((string) $navUser['email']) ?></p>
+                <form method="post" action="<?= e(url('/logout')) ?>">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="theme-btn"><?= icon('logout', 16) ?> Salir</button>
+                </form>
+            <?php endif; ?>
             <p class="sidebar-meta">v<?= e($appVersion) ?> · <?= format_number($repoCount) ?> repos</p>
         </div>
     </aside>
@@ -100,5 +109,9 @@ $jsPath = dirname(__DIR__, 2) . '/assets/js/app.js';
     </div>
 </div>
 <script src="<?= e(url('/assets/js/app.js')) ?>?v=<?= (int) @filemtime($jsPath) ?>"></script>
+<?php if (!empty($charts)): ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="<?= e(url('/assets/js/charts.js')) ?>?v=<?= (int) @filemtime(dirname(__DIR__, 2) . '/assets/js/charts.js') ?>"></script>
+<?php endif; ?>
 </body>
 </html>

@@ -151,6 +151,22 @@ final class StatsService
              FROM repositories"
         )->fetch() ?: [];
 
+        $mix = ['originals' => 0, 'forks' => 0, 'archived' => 0];
+        if ($total > 0) {
+            $row = $pdo->query(
+                "SELECT
+                    SUM(is_archived = 0 AND is_fork = 0) AS originals,
+                    SUM(is_archived = 0 AND is_fork = 1) AS forks,
+                    SUM(is_archived = 1) AS archived
+                 FROM repositories"
+            )->fetch() ?: [];
+            $mix = [
+                'originals' => (int) ($row['originals'] ?? 0),
+                'forks' => (int) ($row['forks'] ?? 0),
+                'archived' => (int) ($row['archived'] ?? 0),
+            ];
+        }
+
         $pct = static function (int $n) use ($total, $safe): int {
             return $total > 0 ? (int) round($n / $safe * 100) : 0;
         };
@@ -165,6 +181,8 @@ final class StatsService
             'public' => max(0, $total - (int) $dash['private']),
             'forks' => (int) $dash['forks'],
             'archived' => (int) $dash['archived'],
+            'originals' => $mix['originals'],
+            'mix' => $mix,
             'stars' => (int) ($totals['stars'] ?? 0),
             'issues' => (int) ($totals['issues'] ?? 0),
             'templates' => (int) ($totals['templates'] ?? 0),
@@ -185,6 +203,56 @@ final class StatsService
             'stale_days' => (int) $dash['stale_days'],
             'last_sync' => $dash['last_sync'],
             'syncs' => SyncService::recent(10),
+            'created_months' => self::monthSeries('github_created_at', 18),
+            'pushed_months' => self::monthSeries('pushed_at', 12),
+            'sync_series' => self::syncSeries(),
         ];
+    }
+
+    /** @return array{labels:list<string>,values:list<int>} */
+    private static function monthSeries(string $column, int $months): array
+    {
+        $allowed = ['github_created_at' => true, 'pushed_at' => true];
+        if (!isset($allowed[$column])) {
+            return ['labels' => [], 'values' => []];
+        }
+        $rows = Database::pdo()->query(
+            "SELECT DATE_FORMAT({$column}, '%Y-%m') AS ym, COUNT(*) AS total
+             FROM repositories
+             WHERE {$column} IS NOT NULL
+               AND {$column} >= DATE_SUB(NOW(), INTERVAL {$months} MONTH)
+             GROUP BY ym"
+        )->fetchAll();
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(string) $row['ym']] = (int) $row['total'];
+        }
+        $labels = [];
+        $values = [];
+        $cursor = new DateTimeImmutable('first day of this month');
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $ym = $cursor->modify("-{$i} months")->format('Y-m');
+            $labels[] = $cursor->modify("-{$i} months")->format('m/y');
+            $values[] = $map[$ym] ?? 0;
+        }
+        return ['labels' => $labels, 'values' => $values];
+    }
+
+    /** @return array{labels:list<string>,upserted:list<int>,findings:list<int>} */
+    private static function syncSeries(): array
+    {
+        $runs = array_reverse(SyncService::recent(12));
+        $labels = [];
+        $upserted = [];
+        $findings = [];
+        foreach ($runs as $run) {
+            if (($run['status'] ?? '') !== 'ok') {
+                continue;
+            }
+            $labels[] = format_datetime((string) ($run['finished_at'] ?? $run['started_at'] ?? ''), 'd/m');
+            $upserted[] = (int) ($run['repos_upserted'] ?? 0);
+            $findings[] = (int) ($run['findings_open'] ?? 0);
+        }
+        return ['labels' => $labels, 'upserted' => $upserted, 'findings' => $findings];
     }
 }

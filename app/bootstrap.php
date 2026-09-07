@@ -18,6 +18,7 @@ if ($appConfig['debug']) {
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Router.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/Services/SettingsService.php';
 require_once __DIR__ . '/Services/CategoryService.php';
 require_once __DIR__ . '/Services/FindingService.php';
@@ -28,6 +29,7 @@ require_once __DIR__ . '/Services/StatsService.php';
 require_once __DIR__ . '/Services/Schema.php';
 
 foreach ([
+    'AuthController',
     'DashboardController',
     'RepoController',
     'AttentionController',
@@ -35,6 +37,7 @@ foreach ([
     'SyncController',
     'MetricsController',
     'SettingsController',
+    'ProfileController',
 ] as $controller) {
     require_once __DIR__ . '/Controllers/' . $controller . '.php';
 }
@@ -55,6 +58,11 @@ try {
     Database::connect($dbConfig);
     if (PHP_SAPI !== 'cli') {
         Schema::ensure();
+        $route = current_route();
+        $public = ['/login'];
+        if (!in_array($route, $public, true)) {
+            Auth::requireLogin();
+        }
     }
 } catch (Throwable $e) {
     if (PHP_SAPI === 'cli') {
